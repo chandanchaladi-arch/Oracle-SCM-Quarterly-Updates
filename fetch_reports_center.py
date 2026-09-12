@@ -47,10 +47,18 @@ def fetch_update(page, update_code: str, out_dir: Path):
     """Select a pillar + a specific update in the Reports Center and
     download the resulting .xlsx feature listing."""
 
-    # "networkidle" can hang indefinitely on pages with background polling, 
-    # so wait for the DOM instead and give the JS app extra time to render. 
     page.goto(READINESS_APP_URL, wait_until="domcontentloaded", timeout=60000)
     page.wait_for_timeout(6000)
+
+    # DEBUG: capture what the page actually looks like once loaded, plus
+    # a list of any iframes present. This is a temporary diagnostic step --
+    # once selectors are confirmed working, this block can be removed.
+    debug_dir = out_dir / "debug"
+    debug_dir.mkdir(exist_ok=True)
+    page.screenshot(path=str(debug_dir / f"screenshot_{update_code}.png"), full_page=True)
+    frame_info = [f.url for f in page.frames]
+    (debug_dir / f"frames_{update_code}.txt").write_text("\n".join(frame_info))
+    print(f"Frames found: {frame_info}")
 
     # 1) Type into the combined pillar/product/module search box.
     search_box = page.get_by_role("textbox").first
