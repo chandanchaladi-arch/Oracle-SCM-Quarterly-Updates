@@ -73,7 +73,13 @@ def fetch_update(page, update_code: str, out_dir: Path):
     # Whatever internal field receives focus will get the typed text.
     select_component = page.locator("#cmbFullModules")
     select_component.click()
-    page.wait_for_timeout(500)
+    page.wait_for_timeout(1500)
+
+    # DEBUG: capture the FULL unfiltered dropdown before typing anything,
+    # so we can read the exact option text Oracle actually uses instead of
+    # guessing module/pillar names.
+    page.screenshot(path=str(debug_dir / f"dropdown_open_{update_code}.png"), full_page=True)
+
     page.keyboard.type(PILLAR_SEARCH_TERM, delay=50)
     page.wait_for_timeout(1500)  # let the dropdown populate
 
