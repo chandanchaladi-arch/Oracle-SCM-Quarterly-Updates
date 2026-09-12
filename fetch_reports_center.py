@@ -47,7 +47,10 @@ def fetch_update(page, update_code: str, out_dir: Path):
     """Select a pillar + a specific update in the Reports Center and
     download the resulting .xlsx feature listing."""
 
-    page.goto(READINESS_APP_URL, wait_until="networkidle")
+    # "networkidle" can hang indefinitely on pages with background polling, 
+    # so wait for the DOM instead and give the JS app extra time to render. 
+    page.goto(READINESS_APP_URL, wait_until="domcontentloaded", timeout=60000) 
+    page.wait_for_timeout(4000)
 
     # 1) Type into the combined pillar/product/module search box.
     search_box = page.get_by_role("textbox").first
