@@ -61,7 +61,7 @@ def fetch_update(page, update_code: str, out_dir: Path):
     print(f"Frames found: {frame_info}")
 
     # 1) Type into the combined pillar/product/module search box.
-    search_box = page.get_by_role("textbox").first
+    search_box = page.get_by_placeholder("Search by Pillar, Product or Module")
     search_box.click()
     search_box.fill(PILLAR_SEARCH_TERM)
     page.wait_for_timeout(1000)  # let the dropdown populate
