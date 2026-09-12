@@ -116,13 +116,24 @@ def main():
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page(accept_downloads=True)
+        # Record video of the whole session so we can WATCH what happened
+        # instead of piecing it together from screenshots and logs. The
+        # video is finalized when the context closes.
+        video_dir = out_dir / "videos"
+        video_dir.mkdir(parents=True, exist_ok=True)
+        context = browser.new_context(
+            accept_downloads=True,
+            record_video_dir=str(video_dir),
+            record_video_size={"width": 1280, "height": 800},
+        )
+        page = context.new_page()
         for update_code in args.updates:
             try:
                 fetch_update(page, update_code, out_dir)
             except Exception as e:
                 print(f"Failed for {update_code}: {e}")
             time.sleep(2)  # be polite between requests
+        context.close()  # finalizes the video file(s) in video_dir
         browser.close()
 
 
