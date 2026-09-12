@@ -40,7 +40,7 @@ READINESS_APP_URL = (
 
 # Oracle's Reports Center groups SCM under the "Supply Chain & Manufacturing"
 # pillar. Adjust this string if Oracle renames the pillar in the UI.
-PILLAR_SEARCH_TERM = "Supply Chain"
+PILLAR_SEARCH_TERM = "Order Management"
 
 
 def fetch_update(page, update_code: str, out_dir: Path):
@@ -82,7 +82,7 @@ def fetch_update(page, update_code: str, out_dir: Path):
     page.screenshot(path=str(debug_dir / f"after_search_{update_code}.png"), full_page=True)
 
     # 2) Pick the top-level pillar result (adjust text match if needed).
-    page.get_by_text("Supply Chain & Manufacturing", exact=False).first.click()
+    page.get_by_text("Order Management", exact=False).first.click()
 
     # 3) Open the Updates dropdown and select the requested release.
     page.get_by_text("Updates", exact=False).first.click()
