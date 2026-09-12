@@ -1,0 +1,62 @@
+[
+  {
+    "release": "26c",
+    "module_code": "mfg",
+    "module_name": "Manufacturing",
+    "source_url": "https://docs.oracle.com/en/cloud/saas/readiness/scm/26c/mfg26c/toc.htm",
+    "features": [
+      {
+        "title": "Table of Contents",
+        "description": ""
+      }
+    ]
+  },
+  {
+    "release": "26c",
+    "module_code": "proc",
+    "module_name": "Procurement",
+    "source_url": "https://docs.oracle.com/en/cloud/saas/readiness/scm/26c/proc26c/toc.htm",
+    "features": [
+      {
+        "title": "Table of Contents",
+        "description": ""
+      }
+    ]
+  },
+  {
+    "release": "26c",
+    "module_code": "order",
+    "module_name": "Order Management",
+    "source_url": "https://docs.oracle.com/en/cloud/saas/readiness/scm/26c/order26c/toc.htm",
+    "features": [
+      {
+        "title": "Table of Contents",
+        "description": ""
+      }
+    ]
+  },
+  {
+    "release": "26c",
+    "module_code": "plm",
+    "module_name": "Product Lifecycle Management",
+    "source_url": "https://docs.oracle.com/en/cloud/saas/readiness/scm/26c/plm26c/toc.htm",
+    "features": [
+      {
+        "title": "Table of Contents",
+        "description": ""
+      }
+    ]
+  },
+  {
+    "release": "26c",
+    "module_code": "scp",
+    "module_name": "Supply Planning",
+    "source_url": "https://docs.oracle.com/en/cloud/saas/readiness/scm/26c/scp26c/toc.htm",
+    "features": [
+      {
+        "title": "Table of Contents",
+        "description": ""
+      }
+    ]
+  }
+]
