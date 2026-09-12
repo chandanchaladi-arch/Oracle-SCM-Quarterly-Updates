@@ -61,9 +61,10 @@ def fetch_update(page, update_code: str, out_dir: Path):
     print(f"Frames found: {frame_info}")
 
     # 1) Type into the combined pillar/product/module search box.
-    search_box = page.get_by_placeholder("Search by Pillar, Product or Module")
-    search_box.click()
-    search_box.fill(PILLAR_SEARCH_TERM)
+    select_component = page.locator("#cmbFullModules")
+    select_component.click()
+    inner_input = select_component.locator("input")
+    inner_input.fill(PILLAR_SEARCH_TERM)
     page.wait_for_timeout(1000)  # let the dropdown populate
 
     # 2) Pick the top-level pillar result (adjust text match if needed).
