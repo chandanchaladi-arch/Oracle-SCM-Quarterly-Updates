@@ -47,6 +47,10 @@ def fetch_update(page, update_code: str, out_dir: Path):
     """Select a pillar + a specific update in the Reports Center and
     download the resulting .xlsx feature listing."""
 
+    # "networkidle" can hang indefinitely on pages with background polling
+    # (e.g. analytics beacons), so we wait for the DOM instead and give the
+    # JS app extra time via a longer timeout, then pause briefly for its
+    # own rendering to finish.
     page.goto(READINESS_APP_URL, wait_until="domcontentloaded", timeout=60000)
     page.wait_for_timeout(6000)
 
@@ -61,10 +65,16 @@ def fetch_update(page, update_code: str, out_dir: Path):
     print(f"Frames found: {frame_info}")
 
     # 1) Type into the combined pillar/product/module search box.
+    # NOTE: The "placeholder" text is a custom attribute JET puts on the
+    # <oj-select-many> element itself, not a real HTML placeholder on an
+    # inner <input> -- confirmed from a timeout trying to locate one.
+    # Rather than hunting for JET's internal (possibly shadow-DOM) input,
+    # we click the component to focus it, then simulate real keystrokes.
+    # Whatever internal field receives focus will get the typed text.
     select_component = page.locator("#cmbFullModules")
     select_component.click()
-    inner_input = select_component.locator("input")
-    inner_input.fill(PILLAR_SEARCH_TERM)
+    page.wait_for_timeout(500)
+    page.keyboard.type(PILLAR_SEARCH_TERM, delay=50)
     page.wait_for_timeout(1000)  # let the dropdown populate
 
     # 2) Pick the top-level pillar result (adjust text match if needed).
