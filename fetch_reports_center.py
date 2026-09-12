@@ -52,7 +52,7 @@ def fetch_update(page, update_code: str, out_dir: Path):
     # JS app extra time via a longer timeout, then pause briefly for its
     # own rendering to finish.
     page.goto(READINESS_APP_URL, wait_until="domcontentloaded", timeout=60000)
-    page.wait_for_timeout(6000)
+    page.wait_for_timeout(16000)
 
     # DEBUG: capture what the page actually looks like once loaded, plus
     # a list of any iframes present. This is a temporary diagnostic step --
