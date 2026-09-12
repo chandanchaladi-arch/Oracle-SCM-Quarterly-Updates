@@ -75,7 +75,11 @@ def fetch_update(page, update_code: str, out_dir: Path):
     select_component.click()
     page.wait_for_timeout(500)
     page.keyboard.type(PILLAR_SEARCH_TERM, delay=50)
-    page.wait_for_timeout(1000)  # let the dropdown populate
+    page.wait_for_timeout(1500)  # let the dropdown populate
+
+    # DEBUG: capture the dropdown state right after typing, so we can see
+    # the exact result text to match in step 2 instead of guessing.
+    page.screenshot(path=str(debug_dir / f"after_search_{update_code}.png"), full_page=True)
 
     # 2) Pick the top-level pillar result (adjust text match if needed).
     page.get_by_text("Supply Chain & Manufacturing", exact=False).first.click()
