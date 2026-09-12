@@ -1,1 +1,78 @@
+name: Oracle SCM Readiness Fetch
 
+# Runs every Monday at 09:00 UTC. GitHub's cron scheduler can run a few
+# minutes late under load -- fine for a weekly job like this.
+# You can also trigger it manually from the Actions tab (workflow_dispatch).
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Release code to fetch, e.g. 26c"
+        required: true
+        default: "26c"
+
+permissions:
+  contents: write  # needed so the workflow can commit data back to the repo
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4 playwright pandas openpyxl
+          playwright install --with-deps chromium
+
+      - name: Determine release code
+        id: release
+        run: |
+          # Manual runs use the input; scheduled runs default to a value
+          # you update quarterly (or compute from the date if you prefer).
+          RELEASE="${{ github.event.inputs.release }}"
+          if [ -z "$RELEASE" ]; then RELEASE="26c"; fi
+          echo "code=$RELEASE" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch structured feed (Reports Center)
+        run: |
+          python fetch_reports_center.py --updates ${{ steps.release.outputs.code }} --out ./data
+
+      - name: Fetch full readiness text (Help Center)
+        run: |
+          python fetch_readiness_docs.py --release ${{ steps.release.outputs.code }} --out ./data
+
+      - name: Diff against previous release (if a prior file exists)
+        run: |
+          # Adjust old/new filenames as your release sequence progresses.
+          if [ -f ./data/scm_readiness_prev.json ]; then
+            python diff_releases.py \
+              --old ./data/scm_readiness_prev.json \
+              --new ./data/scm_readiness_${{ steps.release.outputs.code }}.json \
+              --out ./data/new_features_${{ steps.release.outputs.code }}.json
+          else
+            echo "No previous baseline found -- this run establishes the baseline."
+          fi
+          cp ./data/scm_readiness_${{ steps.release.outputs.code }}.json ./data/scm_readiness_prev.json
+
+      - name: Upload run output as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: oracle-scm-data-${{ steps.release.outputs.code }}
+          path: ./data/*
+
+      - name: Commit data back into the repo
+        run: |
+          git config user.name "oracle-scm-bot"
+          git config user.email "actions@github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "Fetch SCM readiness data for ${{ steps.release.outputs.code }}"
+          git push
