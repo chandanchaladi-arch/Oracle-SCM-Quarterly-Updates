@@ -10,6 +10,14 @@ tips, and role/privilege requirements.
 URL PATTERN (confirmed working, no auth required):
     https://docs.oracle.com/en/cloud/saas/readiness/scm/{release}/{module_code}{release}/toc.htm
 
+IMPORTANT: toc.htm is a table-of-contents / navigation page, not content.
+It lists links to the actual chapter pages (one per feature area). This
+script fetches toc.htm first to discover those chapter links, then fetches
+each chapter page and pulls the real prose from there. (An earlier version
+of this script parsed toc.htm's own headings directly, which only ever
+produced a single fake "feature" per module titled "Table of Contents"
+with no body -- that's simply what toc.htm's own heading says.)
+
 SETUP:
     pip install requests beautifulsoup4 --break-system-packages
 
@@ -32,6 +40,7 @@ import argparse
 import json
 import time
 from pathlib import Path
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -58,23 +67,56 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (internal release-tracking tool; contact: you@yourcompany.com)"
 }
 
+# Safety cap so a malformed/huge TOC can't turn one module into hundreds
+# of requests.
+MAX_CHAPTER_PAGES = 60
 
-def fetch_module(release: str, module_code: str) -> dict | None:
-    url = f"{BASE}/{release}/{module_code}{release}/toc.htm"
+
+def get_soup(url: str) -> BeautifulSoup | None:
     resp = requests.get(url, headers=HEADERS, timeout=20)
     if resp.status_code != 200:
-        print(f"  [{module_code}] HTTP {resp.status_code} at {url}")
+        print(f"    HTTP {resp.status_code} at {url}")
         return None
+    return BeautifulSoup(resp.text, "html.parser")
 
-    soup = BeautifulSoup(resp.text, "html.parser")
 
+def discover_chapter_urls(toc_soup: BeautifulSoup, toc_url: str) -> list[str]:
+    """Pull the ordered, deduplicated list of same-book content page URLs
+    linked from a toc.htm page. Internal Oracle Help Center TOC markup
+    varies by book, so this matches generically on same-directory
+    .htm/.html links rather than a specific CSS class, and skips
+    fragment-only anchors and the TOC page itself."""
+    book_dir = toc_url.rsplit("/", 1)[0] + "/"
+    toc_filename = toc_url.rsplit("/", 1)[-1]
+
+    seen = set()
+    urls = []
+    for a in toc_soup.find_all("a", href=True):
+        href = a["href"].strip()
+        if not href or href.startswith("#") or href.startswith("javascript:"):
+            continue
+        full_url = urljoin(toc_url, href)
+        parsed = urlparse(full_url)
+        if not parsed.path.endswith((".htm", ".html")):
+            continue
+        if not full_url.startswith(book_dir):
+            continue  # don't follow links outside this book
+        if full_url.rsplit("/", 1)[-1].split("#")[0] == toc_filename:
+            continue  # skip self-links back to the TOC
+        if full_url in seen:
+            continue
+        seen.add(full_url)
+        urls.append(full_url)
+    return urls[:MAX_CHAPTER_PAGES]
+
+
+def extract_features(page_soup: BeautifulSoup) -> list[dict]:
+    """Grab heading + following prose as a reasonable default. Oracle's
+    doc template can shift slightly release to release."""
     features = []
-    # Feature titles are typically h1/h2 headings within the content body;
-    # Oracle's doc template can shift slightly release to release, so this
-    # grabs headings + the following paragraph text as a reasonable default.
-    for heading in soup.find_all(["h1", "h2", "h3"]):
+    for heading in page_soup.find_all(["h1", "h2", "h3"]):
         title = heading.get_text(strip=True)
-        if not title or title.lower().startswith("previous") or title.lower().startswith("next"):
+        if not title or title.lower().startswith(("previous", "next", "table of contents")):
             continue
         desc_parts = []
         for sib in heading.find_next_siblings():
@@ -87,12 +129,32 @@ def fetch_module(release: str, module_code: str) -> dict | None:
             "title": title,
             "description": " ".join(desc_parts)[:2000],  # cap length
         })
+    return features
+
+
+def fetch_module(release: str, module_code: str) -> dict | None:
+    toc_url = f"{BASE}/{release}/{module_code}{release}/toc.htm"
+    toc_soup = get_soup(toc_url)
+    if toc_soup is None:
+        return None
+
+    chapter_urls = discover_chapter_urls(toc_soup, toc_url)
+    if not chapter_urls:
+        print(f"  [{module_code}] no chapter links found in TOC at {toc_url}")
+
+    features = []
+    for chapter_url in chapter_urls:
+        chapter_soup = get_soup(chapter_url)
+        if chapter_soup is None:
+            continue
+        features.extend(extract_features(chapter_soup))
+        time.sleep(0.5)  # be polite between chapter requests
 
     return {
         "release": release,
         "module_code": module_code,
         "module_name": MODULE_CODES.get(module_code, module_code),
-        "source_url": url,
+        "source_url": toc_url,
         "features": features,
     }
 
